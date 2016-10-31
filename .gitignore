@@ -1,1 +1,3 @@
 *.njsproj
+/data
+/run-db.bat

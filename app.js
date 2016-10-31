@@ -1,10 +1,27 @@
 var express = require('express'),
-app = express(),
-server = require('http').createServer(app),
-io = require('socket.io').listen(server),
+	app = express(),
+	server = require('http').createServer(app),
+	io = require('socket.io').listen(server),
+	mongoose = require('mongoose'),
     users = {}; //keep track of all users online
 
 server.listen(3000); //listen to port 3000
+
+mongoose.Promise = global.Promise;
+mongoose.connect('mongodb://localhost/chat', function(err){
+	if(err)
+		console.log("Couldn't connect to mongodb: " + err);
+	else
+		console.log('Connected to mongodb');
+});
+
+var chatSchema = mongoose.Schema({ //uses BSON, similar to JSON
+	// username: {first: String, last: String}, like JSON objects
+	username: String,
+	msg: String,
+	created: {type: Date, default: Date.now}
+});
+var Chat = mongoose.model('Message', chatSchema);
 
 app.use('/public', express.static(__dirname + '/public'));
 
@@ -15,15 +32,20 @@ app.get('/', function (req, res) {
 
 //when a client connects
 io.sockets.on('connection', function(socket){
+	var query = Chat.find({});
+	query.sort('-created').limit(8).exec(function(err, docs){
+		if(err) throw err;
+		console.log('Sending old messages!');
+		socket.emit('load old msgs', docs);
+	});
 
 	socket.on('new user', function(data, callback){ //callback since sending data back to client
-		if (data in users){ //check if valid username
+		if (data in users){
 			callback(false);
 		} else {
 			callback(true);
 			socket.username = data; //add as property of socket
 			users[socket.username] = socket;
-			// usernames.push(socket.username);
 			updateUsernames();	
 		}
 	});
@@ -46,8 +68,8 @@ io.sockets.on('connection', function(socket){
 				var name = msg.substring(0, index);
 				var msg = msg.substring(index+1);
 				if(name in users){
-					users[name].emit('whisper', {msg: msg, name: socket.username});
-					users[socket.username].emit('whisper', {msg: msg, name: socket.username});
+					users[name].emit('whisper', {msg: msg, username: socket.username});
+					users[socket.username].emit('whisper', {msg: msg, username: socket.username});
 					console.log('Whisper!');
 				} else{
 					callback('Error! Enter a valid user.');
@@ -55,17 +77,20 @@ io.sockets.on('connection', function(socket){
 			} else{
 				callback('Error! Please enter a message for your whisper.');
 			}
+		
 		// send a message
-	} else {
-			io.sockets.emit('new message', {msg: msg, name: socket.username}); //stored in every socket
+		} else {
+			var newMsg = new Chat({msg: msg, username: socket.username});
+			newMsg.save(function(err){
+				if(err) throw err;
+				io.sockets.emit('new message', {msg: msg, username: socket.username});
+			});
 		}
 	});
 
 	socket.on('disconnect', function(data){
 		if (!socket.username) return;
-		//get rid of 1 element in usernames[]
 		delete users[socket.username];
-		// usernames.splice(usernames.indexOf(socket.username),1);
 		updateUsernames();
 	});
 });
