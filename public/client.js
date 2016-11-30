@@ -59,4 +59,63 @@ $(document).ready(function(){
     socket.on('whisper', function(data){
         displayMsg(data, 'whisper');
     });
+
+
+
+    // drawing canvas
+    var $canvas = $('#canvas'); //jQuery Object
+    var canvas = $canvas[0];    //HTML DOM Object
+    // var canvas = document.getElementById('canvas') //HTML DOM Object
+    var context = canvas.getContext("2d"); //returns drawing context, or null
+
+    var xPoints = new Array();
+    var yPoints = new Array();
+    var clickDrag = new Array();
+    var paint;
+
+    function addPoint(x, y, dragging) {
+        xPoints.push(x);
+        yPoints.push(y);
+        clickDrag.push(dragging);
+    }
+
+    function render(){
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
+        context.strokeStyle = "#9400d3"; //purple
+        context.lineJoin = "round";
+        context.lineWidth = 2;
+
+        for(var i=0; i < xPoints.length; i++) {        
+            context.beginPath();
+            if(clickDrag[i] && i){
+                context.moveTo(xPoints[i-1], yPoints[i-1]); //moves path, without creating line
+            }else{
+                context.moveTo(xPoints[i]-1, yPoints[i]);
+            }
+            context.lineTo(xPoints[i], yPoints[i]); //moves path, creates line to new point
+            context.closePath();
+            context.stroke(); //draws defined path
+        }
+    }
+
+    $canvas.mousedown(function(e){
+        var mouseX = e.pageX - this.offsetLeft;
+        var mouseY = e.pageY - this.offsetTop;
+
+        paint = true;
+        addPoint(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
+        render();
+    });
+
+    $canvas.mousemove(function(e){
+        if(paint){
+            addPoint(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, true);
+            render();
+        }
+    });
+
+    $canvas.on('mouseup mouseleave', function(e){
+        paint = false;
+    });
+
 });
