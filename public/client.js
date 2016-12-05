@@ -68,33 +68,52 @@ $(document).ready(function(){
     // var canvas = document.getElementById('canvas') //HTML DOM Object
     var context = canvas.getContext("2d"); //returns drawing context, or null
 
-    var xPoints = new Array();
-    var yPoints = new Array();
-    var clickDrag = new Array();
+    var myDrawing = {
+        xPoints: [],
+        yPoints: [],
+        dragged: []
+    };
+    // var xPoints = new Array();
+    // var yPoints = new Array();
+    // var dragged = new Array();
     var paint;
 
     function addPoint(x, y, dragging) {
-        xPoints.push(x);
-        yPoints.push(y);
-        clickDrag.push(dragging);
+        myDrawing.xPoints.push(x);
+        myDrawing.yPoints.push(y);
+        myDrawing.dragged.push(dragging);
     }
 
-    function render(){
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
+    function render(drawing){
+        // context.clearRect(0, 0, context.canvas.width, context.canvas.height); // Clears the canvas
         context.strokeStyle = "#9400d3"; //purple
         context.lineJoin = "round";
         context.lineWidth = 2;
 
-        for(var i=0; i < xPoints.length; i++) {        
+        for(var i=0; i < myDrawing.xPoints.length; i++) {        
             context.beginPath();
-            if(clickDrag[i] && i){
-                context.moveTo(xPoints[i-1], yPoints[i-1]); //moves path, without creating line
+            if(myDrawing.dragged[i] && i){
+                context.moveTo(myDrawing.xPoints[i-1], myDrawing.yPoints[i-1]); //moves path, without creating line
             }else{
-                context.moveTo(xPoints[i]-1, yPoints[i]);
+                context.moveTo(myDrawing.xPoints[i]-1, myDrawing.yPoints[i]);
             }
-            context.lineTo(xPoints[i], yPoints[i]); //moves path, creates line to new point
+            context.lineTo(myDrawing.xPoints[i], myDrawing.yPoints[i]); //moves path, creates line to new point
             context.closePath();
             context.stroke(); //draws defined path
+        }
+
+        if(drawing) { //if another drawing exists, render it
+            for(var i=0; i < drawing.xPoints.length; i++) {        
+                context.beginPath();
+                if(drawing.dragged[i] && i){
+                    context.moveTo(drawing.xPoints[i-1], drawing.yPoints[i-1]); //moves path, without creating line
+                }else{
+                    context.moveTo(drawing.xPoints[i]-1, drawing.yPoints[i]);
+                }
+                context.lineTo(drawing.xPoints[i], drawing.yPoints[i]); //moves path, creates line to new point
+                context.closePath();
+                context.stroke(); //draws defined path
+            }
         }
     }
 
@@ -105,12 +124,14 @@ $(document).ready(function(){
         paint = true;
         addPoint(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
         render();
+        socket.emit('drawn', myDrawing);
     });
 
     $canvas.mousemove(function(e){
         if(paint){
             addPoint(e.pageX - this.offsetLeft, e.pageY - this.offsetTop, true);
             render();
+            socket.emit('drawn', myDrawing);
         }
     });
 
@@ -118,4 +139,15 @@ $(document).ready(function(){
         paint = false;
     });
 
+    socket.on('updateCanvas', function(data){
+        console.log(data);
+        // theirDrawing = data;
+        render(data);
+    });
+
+    // socket.on('load old drawings', function(docs){
+    //     for(var i=docs.length-1; i>=0; i--){
+    //         render(docs[i]);
+    //     }
+    // });
 });

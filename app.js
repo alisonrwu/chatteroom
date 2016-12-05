@@ -23,6 +23,11 @@ var chatSchema = mongoose.Schema({ //uses BSON, similar to JSON
 });
 var Chat = mongoose.model('Message', chatSchema);
 
+// var canvasSchema = mongoose.Schema({
+// 	drawing: {xPoints: [], yPoints: [], dragged: []}
+// });
+// var Canvas = mongoose.model('Drawing', canvasSchema);
+
 app.use('/public', express.static(__dirname + '/public'));
 
 //create route
@@ -38,6 +43,13 @@ io.sockets.on('connection', function(socket){
 		console.log('Sending old messages!');
 		socket.emit('load old msgs', docs);
 	});
+
+	// var queryCanvas = Canvas.find({});
+	// queryCanvas.limit(10).exec(function(err, docs){
+	// 	if(err) throw err;
+	// 	console.log('Sending old drawings!');
+	// 	socket.emit('load old drawings', docs);
+	// });
 
 	socket.on('new user', function(data, callback){ //callback since sending data back to client
 		if (data in users){
@@ -92,5 +104,15 @@ io.sockets.on('connection', function(socket){
 		if (!socket.username) return;
 		delete users[socket.username];
 		updateUsernames();
+	});
+
+
+//for canvas
+	socket.on('drawn', function(data){
+		// var newDrawing = new Canvas(data);
+		// newDrawing.save(function(err){
+			// if(err) throw err;
+			io.sockets.emit('updateCanvas', data);
+		// });
 	});
 });
